@@ -18,7 +18,7 @@ async function findById(id) {
 }
 
 async function findByEmail(email) {
-    const [row] = await query('SELECT * FROM Administrator WHERE email = ?', [email]);
+    const [row] = await query('SELECT id FROM Administrator WHERE email = ?', [email]);
     return row || null;
 }
 
@@ -50,12 +50,13 @@ async function getPermissions(adminId) {
     return query('SELECT * FROM Permission WHERE admin_id = ?', [adminId]);
 }
 
-async function upsertPermission(adminId, area, can_create, can_edit, can_delete) {
+async function upsertPermission(adminId, area, can_create, can_edit, can_delete, conn = null) {
     await query(
         `INSERT INTO Permission (admin_id, area, can_create, can_edit, can_delete)
          VALUES (?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE can_create = VALUES(can_create), can_edit = VALUES(can_edit), can_delete = VALUES(can_delete)`,
-        [adminId, area, can_create ? 1 : 0, can_edit ? 1 : 0, can_delete ? 1 : 0]
+        [adminId, area, can_create ? 1 : 0, can_edit ? 1 : 0, can_delete ? 1 : 0],
+        conn
     );
 }
 

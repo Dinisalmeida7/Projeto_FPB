@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const AppError = require('../../shared/utils/AppError');
+const { withTransaction } = require('../../infrastructure/database/connection');
 const repo = require('./administrators.repository');
 
 const VALID_AREAS = ['clubs', 'competitions', 'games', 'members', 'documents', 'administrators'];
@@ -41,12 +42,11 @@ async function deleteAdmin(id, requesterId) {
 async function setPermissions(adminId, permissions) {
     await getById(adminId);
 
-    for (const perm of permissions) {
-        if (!VALID_AREAS.includes(perm.area)) {
-            throw new AppError(`Invalid area: ${perm.area}.`, 400);
+    await withTransaction(async (conn) => {
+        for (const perm of permissions) {
+            await repo.upsertPermission(adminId, perm.area, perm.can_create, perm.can_edit, perm.can_delete, conn);
         }
-        await repo.upsertPermission(adminId, perm.area, perm.can_create, perm.can_edit, perm.can_delete);
-    }
+    });
 
     return repo.getPermissions(adminId);
 }

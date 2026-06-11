@@ -13,7 +13,11 @@ const pool = mysql.createPool({
     timezone: '+00:00',
 });
 
-async function query(sql, params = []) {
+async function query(sql, params = [], conn = null) {
+    if (conn) {
+        const [rows] = await conn.execute(sql, params);
+        return rows;
+    }
     const [rows] = await pool.execute(sql, params);
     return rows;
 }
@@ -22,9 +26,24 @@ async function getConnection() {
     return pool.getConnection();
 }
 
+async function withTransaction(fn) {
+    const conn = await pool.getConnection();
+    await conn.beginTransaction();
+    try {
+        const result = await fn(conn);
+        await conn.commit();
+        return result;
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
+}
+
 async function testConnection() {
     const conn = await pool.getConnection();
     conn.release();
 }
 
-module.exports = { query, getConnection, testConnection };
+module.exports = { query, getConnection, withTransaction, testConnection };

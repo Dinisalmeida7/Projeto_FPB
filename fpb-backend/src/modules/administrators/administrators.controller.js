@@ -26,7 +26,8 @@ const update = asyncHandler(async (req, res) => {
         throw new AppError('Permission denied.', 403);
     }
     const admin = await svc.updateAdmin(req.params.id, req.body);
-    await logAction(req.admin.id, req.admin.email, 'UPDATE', 'Administrator', admin.id, req.body, req.ip);
+    const { password: _pw, ...auditBody } = req.body;
+    await logAction(req.admin.id, req.admin.email, 'UPDATE', 'Administrator', admin.id, auditBody, req.ip);
     return success(res, admin);
 });
 

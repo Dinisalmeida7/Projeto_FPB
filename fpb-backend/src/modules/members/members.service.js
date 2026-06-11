@@ -1,4 +1,5 @@
 const AppError = require('../../shared/utils/AppError');
+const { withTransaction } = require('../../infrastructure/database/connection');
 const repo = require('./members.repository');
 
 async function getAll(filters) {
@@ -12,34 +13,32 @@ async function getById(id) {
 }
 
 async function createMember(data) {
-    if (!data.first_name || !data.last_name) {
-        throw new AppError('first_name and last_name are required.', 400);
-    }
-    const id = await repo.createPerson(data);
-
-    if (data.roles) {
-        for (const [role, roleData] of Object.entries(data.roles)) {
-            if (roleData) await repo.upsertRole(id, role, roleData);
+    let personId;
+    await withTransaction(async (conn) => {
+        personId = await repo.createPerson(data, conn);
+        if (data.roles) {
+            for (const [role, roleData] of Object.entries(data.roles)) {
+                if (roleData) await repo.upsertRole(personId, role, roleData, conn);
+            }
         }
-    }
-
-    return repo.findById(id);
+    });
+    return repo.findById(personId);
 }
 
 async function updateMember(id, data) {
     await getById(id);
-    await repo.updatePerson(id, data);
-
-    if (data.roles) {
-        for (const [role, roleData] of Object.entries(data.roles)) {
-            if (roleData === null) {
-                await repo.removeRole(id, role);
-            } else {
-                await repo.upsertRole(id, role, roleData);
+    await withTransaction(async (conn) => {
+        await repo.updatePerson(id, data, conn);
+        if (data.roles) {
+            for (const [role, roleData] of Object.entries(data.roles)) {
+                if (roleData === null) {
+                    await repo.removeRole(id, role, conn);
+                } else {
+                    await repo.upsertRole(id, role, roleData, conn);
+                }
             }
         }
-    }
-
+    });
     return repo.findById(id);
 }
 
