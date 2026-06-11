@@ -1,19 +1,37 @@
-require('dotenv').config();
 const app = require('./app');
-const { testConnection } = require('./infrastructure/database/connection');
+const connectDB = require('./infrastructure/database/connection');
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8001;
 
-async function start() {
-    await testConnection();
-    console.log('Database connection established.');
-
-    app.listen(PORT, () => {
-        console.log(`FPB API running on http://localhost:${PORT}/api/v1`);
+// Conectar à base de dados e iniciar servidor
+const startServer = async () => {
+  try {
+    // Conectar ao MongoDB
+    await connectDB();
+    
+    // Iniciar servidor
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`\n🚀 Servidor FPB a correr em http://localhost:${PORT}`);
+      console.log(`🎯 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`\n📡 Endpoints disponíveis:`);
+      console.log(`   - GET    http://localhost:${PORT}/api/clubs`);
+      console.log(`   - POST   http://localhost:${PORT}/api/clubs`);
+      console.log(`   - GET    http://localhost:${PORT}/api/competitions`);
+      console.log(`   - POST   http://localhost:${PORT}/api/competitions`);
+      console.log(`   - GET    http://localhost:${PORT}/api/games`);
+      console.log(`   - POST   http://localhost:${PORT}/api/games`);
+      console.log(`\n✅ Backend pronto para receber pedidos!\n`);
     });
-}
-
-start().catch((err) => {
-    console.error('Failed to start server:', err.message);
+  } catch (error) {
+    console.error('❌ Erro ao iniciar servidor:', error.message);
     process.exit(1);
+  }
+};
+
+// Tratar encerramento gracioso
+process.on('SIGINT', () => {
+  console.log('\n🛑 A encerrar servidor...');
+  process.exit(0);
 });
+
+startServer();
