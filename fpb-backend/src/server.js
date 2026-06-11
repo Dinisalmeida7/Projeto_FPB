@@ -11,26 +11,26 @@ const startServer = async () => {
     
     // Iniciar servidor
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`\n🚀 Servidor FPB a correr em http://localhost:${PORT}`);
-      console.log(`🎯 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`\n📡 Endpoints disponíveis:`);
+      console.log(`\nServidor FPB a correr em http://localhost:${PORT}`);
+      console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`\nEndpoints disponíveis:`);
       console.log(`   - GET    http://localhost:${PORT}/api/clubs`);
       console.log(`   - POST   http://localhost:${PORT}/api/clubs`);
       console.log(`   - GET    http://localhost:${PORT}/api/competitions`);
       console.log(`   - POST   http://localhost:${PORT}/api/competitions`);
       console.log(`   - GET    http://localhost:${PORT}/api/games`);
       console.log(`   - POST   http://localhost:${PORT}/api/games`);
-      console.log(`\n✅ Backend pronto para receber pedidos!\n`);
+      console.log(`\nBackend pronto para receber pedidos!\n`);
     });
   } catch (error) {
-    console.error('❌ Erro ao iniciar servidor:', error.message);
+    console.error('Erro ao iniciar servidor:', error.message);
     process.exit(1);
   }
 };
 
 // Tratar encerramento gracioso
 process.on('SIGINT', () => {
-  console.log('\n🛑 A encerrar servidor...');
+  console.log('\nA encerrar servidor...');
   process.exit(0);
 });
 
