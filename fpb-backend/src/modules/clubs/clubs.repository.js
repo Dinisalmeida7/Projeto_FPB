@@ -17,12 +17,12 @@ function buildWhere({ search, district, is_active }) {
 
 async function findAll({ search, district, is_active, page = 1, limit = 20 } = {}) {
     const { where, params } = buildWhere({ search, district, is_active });
-    const lim = parseInt(limit);
-    const offset = (parseInt(page) - 1) * lim;
+    const lim = parseInt(limit) || 20;
+    const offset = ((parseInt(page) || 1) - 1) * lim;
 
     const [[{ total }], rows] = await Promise.all([
         query(`SELECT COUNT(*) AS total FROM Club WHERE ${where}`, params),
-        query(`SELECT ${COLS} FROM Club WHERE ${where} ORDER BY name ASC LIMIT ? OFFSET ?`, [...params, lim, offset]),
+        query(`SELECT ${COLS} FROM Club WHERE ${where} ORDER BY name ASC LIMIT ${lim} OFFSET ${offset}`, params),
     ]);
 
     return { rows, total };

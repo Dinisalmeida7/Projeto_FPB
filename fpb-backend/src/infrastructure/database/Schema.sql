@@ -2,6 +2,29 @@ CREATE DATABASE IF NOT EXISTS fpb_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unico
 USE fpb_db;
 
 -- ============================================================
+-- DROP ALL TABLES (ordem inversa das foreign keys)
+-- ============================================================
+-- SET FOREIGN_KEY_CHECKS = 0;
+-- DROP TABLE IF EXISTS AuditLog;
+-- DROP TABLE IF EXISTS Document;
+-- DROP TABLE IF EXISTS Permission;
+-- DROP TABLE IF EXISTS Administrator;
+-- DROP TABLE IF EXISTS GameReferee;
+-- DROP TABLE IF EXISTS Game;
+-- DROP TABLE IF EXISTS CompetitionTeam;
+-- DROP TABLE IF EXISTS Competition;
+-- DROP TABLE IF EXISTS TeamAthlete;
+-- DROP TABLE IF EXISTS Team;
+-- DROP TABLE IF EXISTS Club;
+-- DROP TABLE IF EXISTS FPBMember;
+-- DROP TABLE IF EXISTS Coach;
+-- DROP TABLE IF EXISTS Referee;
+-- DROP TABLE IF EXISTS Athlete;
+-- DROP TABLE IF EXISTS Person;
+-- SET FOREIGN_KEY_CHECKS = 1;
+-- ============================================================
+
+-- ============================================================
 -- PERSONS & ROLES
 -- ============================================================
 
@@ -257,7 +280,8 @@ INSERT INTO Administrator (name, email, password, is_superadmin, is_active)
 VALUES (
     'Super Admin',
     'admin@fpb.pt',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMlFAZZ3cR3Lhhu5jcb5kqVk5y',
+    '$2b$12$LbanVKorfFH3FZ9fIBMwgOyf1CXYMV556cFUGVHZTvLw3jsi1OvLm',
     1,
     1
 );
+SELECT * FROM Administrator

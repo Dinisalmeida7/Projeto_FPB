@@ -26,8 +26,8 @@ async function findAll({ search, role, page = 1, limit = 20 } = {}) {
         LEFT JOIN FPBMember m ON m.person_id = p.id
         WHERE ${where}`;
 
-    const lim = parseInt(limit);
-    const offset = (parseInt(page) - 1) * lim;
+    const lim = parseInt(limit) || 20;
+    const offset = ((parseInt(page) || 1) - 1) * lim;
 
     const [[{ total }], rows] = await Promise.all([
         query(`SELECT COUNT(DISTINCT p.id) AS total ${baseSql}`, params),
@@ -38,8 +38,8 @@ async function findAll({ search, role, page = 1, limit = 20 } = {}) {
                 IF(c.id IS NOT NULL, 1, 0) AS is_coach,
                 IF(m.id IS NOT NULL, 1, 0) AS is_fpbmember
              ${baseSql}
-             ORDER BY p.last_name ASC, p.first_name ASC LIMIT ? OFFSET ?`,
-            [...params, lim, offset]
+             ORDER BY p.last_name ASC, p.first_name ASC LIMIT ${lim} OFFSET ${offset}`,
+            params
         ),
     ]);
 

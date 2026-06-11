@@ -2,7 +2,8 @@ const { query } = require('../../infrastructure/database/connection');
 
 async function globalSearch(q, type = 'all', page = 1, limit = 20) {
     const like = `%${q}%`;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const lim = parseInt(limit) || 20;
+    const offset = ((parseInt(page) || 1) - 1) * lim;
 
     const queries = [];
 
@@ -66,7 +67,7 @@ async function globalSearch(q, type = 'all', page = 1, limit = 20) {
     const results = [...clubs, ...members, ...competitions, ...games];
 
     return {
-        rows: results.slice(offset, offset + parseInt(limit)),
+        rows: results.slice(offset, offset + lim),
         total: results.length,
     };
 }

@@ -13,8 +13,8 @@ function buildWhere({ competition_id, team_id, status, date_from, date_to }) {
 
 async function findAll({ competition_id, team_id, status, date_from, date_to, page = 1, limit = 20 } = {}) {
     const { where, params } = buildWhere({ competition_id, team_id, status, date_from, date_to });
-    const lim = parseInt(limit);
-    const offset = (parseInt(page) - 1) * lim;
+    const lim = parseInt(limit) || 20;
+    const offset = ((parseInt(page) || 1) - 1) * lim;
 
     const [[{ total }], rows] = await Promise.all([
         query(
@@ -36,8 +36,8 @@ async function findAll({ competition_id, team_id, status, date_from, date_to, pa
              JOIN Team at ON at.id = g.away_team_id
              JOIN Competition c ON c.id = g.competition_id
              WHERE ${where}
-             ORDER BY g.game_date DESC LIMIT ? OFFSET ?`,
-            [...params, lim, offset]
+             ORDER BY g.game_date DESC LIMIT ${lim} OFFSET ${offset}`,
+            params
         ),
     ]);
 

@@ -1,13 +1,12 @@
 const { query } = require('../../infrastructure/database/connection');
 
 async function findAll({ page = 1, limit = 20 } = {}) {
-    const lim = parseInt(limit);
-    const offset = (parseInt(page) - 1) * lim;
+    const lim = parseInt(limit) || 20;
+    const offset = ((parseInt(page) || 1) - 1) * lim;
     const [[{ total }], rows] = await Promise.all([
         query('SELECT COUNT(*) AS total FROM Administrator'),
         query(
-            'SELECT id, name, email, is_superadmin, is_active, last_login, created_at FROM Administrator ORDER BY name LIMIT ? OFFSET ?',
-            [lim, offset]
+            `SELECT id, name, email, is_superadmin, is_active, last_login, created_at FROM Administrator ORDER BY name LIMIT ${lim} OFFSET ${offset}`
         ),
     ]);
     return { rows, total };

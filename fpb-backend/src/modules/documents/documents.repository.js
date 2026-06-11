@@ -5,12 +5,12 @@ const COLS = 'id, title, description, category, file_path, file_name, file_size,
 async function findAll({ category, page = 1, limit = 20 } = {}) {
     const where = category ? 'category = ?' : '1=1';
     const params = category ? [category] : [];
-    const lim = parseInt(limit);
-    const offset = (parseInt(page) - 1) * lim;
+    const lim = parseInt(limit) || 20;
+    const offset = ((parseInt(page) || 1) - 1) * lim;
 
     const [[{ total }], rows] = await Promise.all([
         query(`SELECT COUNT(*) AS total FROM Document WHERE ${where}`, params),
-        query(`SELECT ${COLS} FROM Document WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`, [...params, lim, offset]),
+        query(`SELECT ${COLS} FROM Document WHERE ${where} ORDER BY created_at DESC LIMIT ${lim} OFFSET ${offset}`, params),
     ]);
 
     return { rows, total };

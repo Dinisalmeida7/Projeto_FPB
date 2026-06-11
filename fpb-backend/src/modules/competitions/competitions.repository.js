@@ -13,12 +13,12 @@ function buildWhere({ search, season, status }) {
 
 async function findAll({ search, season, status, page = 1, limit = 20 } = {}) {
     const { where, params } = buildWhere({ search, season, status });
-    const lim = parseInt(limit);
-    const offset = (parseInt(page) - 1) * lim;
+    const lim = parseInt(limit) || 20;
+    const offset = ((parseInt(page) || 1) - 1) * lim;
 
     const [[{ total }], rows] = await Promise.all([
         query(`SELECT COUNT(*) AS total FROM Competition WHERE ${where}`, params),
-        query(`SELECT ${COLS} FROM Competition WHERE ${where} ORDER BY start_date DESC LIMIT ? OFFSET ?`, [...params, lim, offset]),
+        query(`SELECT ${COLS} FROM Competition WHERE ${where} ORDER BY start_date DESC LIMIT ${lim} OFFSET ${offset}`, params),
     ]);
 
     return { rows, total };
