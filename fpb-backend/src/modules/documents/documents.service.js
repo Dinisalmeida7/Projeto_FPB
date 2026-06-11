@@ -12,7 +12,6 @@ async function getById(id) {
 
 async function createDocument(file, body, adminId) {
     if (!file) throw new AppError('File is required.', 400);
-    if (!body.title) throw new AppError('Title is required.', 400);
 
     return repo.create({
         title: body.title,

@@ -3,8 +3,6 @@ const AppError = require('../../shared/utils/AppError');
 const { withTransaction } = require('../../infrastructure/database/connection');
 const repo = require('./administrators.repository');
 
-const VALID_AREAS = ['clubs', 'competitions', 'games', 'members', 'documents', 'administrators'];
-
 async function getAll(filters) { return repo.findAll(filters); }
 
 async function getById(id) {
@@ -15,9 +13,6 @@ async function getById(id) {
 }
 
 async function createAdmin(data) {
-    if (!data.name || !data.email || !data.password) {
-        throw new AppError('name, email and password are required.', 400);
-    }
     const existing = await repo.findByEmail(data.email);
     if (existing) throw new AppError('Email already in use.', 409);
 

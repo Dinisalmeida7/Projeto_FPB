@@ -15,7 +15,6 @@ async function getStandings(id) {
 }
 
 async function createCompetition(data) {
-    if (!data.name || !data.season) throw new AppError('name and season are required.', 400);
     return repo.create(data);
 }
 

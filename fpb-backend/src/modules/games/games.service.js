@@ -10,9 +10,6 @@ async function getById(id) {
 }
 
 async function createGame(data) {
-    if (!data.competition_id || !data.home_team_id || !data.away_team_id) {
-        throw new AppError('competition_id, home_team_id and away_team_id are required.', 400);
-    }
     if (String(data.home_team_id) === String(data.away_team_id)) {
         throw new AppError('Home and away teams must be different.', 400);
     }

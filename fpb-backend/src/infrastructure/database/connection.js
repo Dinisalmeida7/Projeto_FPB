@@ -8,8 +8,8 @@ const pool = mysql.createPool({
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'fpb_db',
     waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
+    connectionLimit: parseInt(process.env.DB_POOL_SIZE) || 10,
+    queueLimit: parseInt(process.env.DB_QUEUE_LIMIT) || 0,
     timezone: '+00:00',
 });
 
@@ -46,4 +46,8 @@ async function testConnection() {
     conn.release();
 }
 
-module.exports = { query, getConnection, withTransaction, testConnection };
+async function closePool() {
+    await pool.end();
+}
+
+module.exports = { query, getConnection, withTransaction, testConnection, closePool };

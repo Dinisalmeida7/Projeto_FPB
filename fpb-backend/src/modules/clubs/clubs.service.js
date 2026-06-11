@@ -12,7 +12,6 @@ async function getById(id) {
 }
 
 async function createClub(data) {
-    if (!data.name) throw new AppError('Club name is required.', 400);
     return repo.create(data);
 }
 
