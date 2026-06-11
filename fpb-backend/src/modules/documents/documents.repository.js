@@ -1,22 +1,23 @@
 const { query } = require('../../infrastructure/database/connection');
 
+const COLS = 'id, title, description, category, file_path, file_name, file_size, mime_type, uploaded_by, created_at, updated_at';
+
 async function findAll({ category, page = 1, limit = 20 } = {}) {
-    let sql = 'SELECT * FROM Document WHERE 1=1';
-    const params = [];
+    const where = category ? 'category = ?' : '1=1';
+    const params = category ? [category] : [];
+    const lim = parseInt(limit);
+    const offset = (parseInt(page) - 1) * lim;
 
-    if (category) { sql += ' AND category = ?'; params.push(category); }
+    const [[{ total }], rows] = await Promise.all([
+        query(`SELECT COUNT(*) AS total FROM Document WHERE ${where}`, params),
+        query(`SELECT ${COLS} FROM Document WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`, [...params, lim, offset]),
+    ]);
 
-    const [{ total }] = await query(sql.replace('SELECT *', 'SELECT COUNT(*) AS total'), params);
-
-    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), (parseInt(page) - 1) * parseInt(limit));
-
-    const rows = await query(sql, params);
     return { rows, total };
 }
 
 async function findById(id) {
-    const [row] = await query('SELECT * FROM Document WHERE id = ?', [id]);
+    const [row] = await query(`SELECT ${COLS} FROM Document WHERE id = ?`, [id]);
     return row || null;
 }
 

@@ -1,24 +1,31 @@
 const { query } = require('../../infrastructure/database/connection');
 
-async function findAll({ search, season, status, page = 1, limit = 20 } = {}) {
-    let sql = 'SELECT * FROM Competition WHERE 1=1';
+const COLS = 'id, name, season, gender, age_group, level, status, start_date, end_date, description, created_at, updated_at';
+
+function buildWhere({ search, season, status }) {
+    const clauses = [];
     const params = [];
+    if (search) { clauses.push('name LIKE ?'); params.push(`%${search}%`); }
+    if (season) { clauses.push('season = ?'); params.push(season); }
+    if (status) { clauses.push('status = ?'); params.push(status); }
+    return { where: clauses.length ? clauses.join(' AND ') : '1=1', params };
+}
 
-    if (search) { sql += ' AND name LIKE ?'; params.push(`%${search}%`); }
-    if (season) { sql += ' AND season = ?'; params.push(season); }
-    if (status) { sql += ' AND status = ?'; params.push(status); }
+async function findAll({ search, season, status, page = 1, limit = 20 } = {}) {
+    const { where, params } = buildWhere({ search, season, status });
+    const lim = parseInt(limit);
+    const offset = (parseInt(page) - 1) * lim;
 
-    const [{ total }] = await query(sql.replace('SELECT *', 'SELECT COUNT(*) AS total'), params);
+    const [[{ total }], rows] = await Promise.all([
+        query(`SELECT COUNT(*) AS total FROM Competition WHERE ${where}`, params),
+        query(`SELECT ${COLS} FROM Competition WHERE ${where} ORDER BY start_date DESC LIMIT ? OFFSET ?`, [...params, lim, offset]),
+    ]);
 
-    sql += ' ORDER BY start_date DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), (parseInt(page) - 1) * parseInt(limit));
-
-    const rows = await query(sql, params);
     return { rows, total };
 }
 
 async function findById(id) {
-    const [row] = await query('SELECT * FROM Competition WHERE id = ?', [id]);
+    const [row] = await query(`SELECT ${COLS} FROM Competition WHERE id = ?`, [id]);
     return row || null;
 }
 
@@ -83,8 +90,10 @@ async function update(id, data) {
     const fields = ['name', 'season', 'gender', 'age_group', 'level', 'status', 'start_date', 'end_date', 'description'];
     const updates = fields.filter(f => data[f] !== undefined);
     if (!updates.length) return findById(id);
-    const sql = `UPDATE Competition SET ${updates.map(f => `${f} = ?`).join(', ')} WHERE id = ?`;
-    await query(sql, [...updates.map(f => data[f]), id]);
+    await query(
+        `UPDATE Competition SET ${updates.map(f => `${f} = ?`).join(', ')} WHERE id = ?`,
+        [...updates.map(f => data[f]), id]
+    );
     return findById(id);
 }
 

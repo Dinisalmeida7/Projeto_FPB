@@ -3,7 +3,10 @@ const fs = require('fs');
 const multer = require('multer');
 
 const uploadDir = path.resolve(process.env.UPLOAD_DIR || 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
@@ -18,9 +21,13 @@ const upload = multer({
     limits: { fileSize: 20 * 1024 * 1024 },
 });
 
-function deleteFile(filePath) {
+async function deleteFile(filePath) {
     const abs = path.resolve(filePath);
-    if (fs.existsSync(abs)) fs.unlinkSync(abs);
+    try {
+        await fs.promises.unlink(abs);
+    } catch (err) {
+        if (err.code !== 'ENOENT') throw err;
+    }
 }
 
 module.exports = { upload, deleteFile, uploadDir };

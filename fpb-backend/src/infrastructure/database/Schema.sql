@@ -238,8 +238,11 @@ CREATE INDEX idx_club_district ON Club(district);
 CREATE INDEX idx_competition_season ON Competition(season);
 CREATE INDEX idx_competition_status ON Competition(status);
 CREATE INDEX idx_game_date ON Game(game_date);
-CREATE INDEX idx_game_competition ON Game(competition_id);
-CREATE INDEX idx_game_status ON Game(status);
+-- Composite indexes serve both single-column and multi-column filter patterns on Game
+CREATE INDEX idx_game_comp_status ON Game(competition_id, status);
+CREATE INDEX idx_game_comp_date  ON Game(competition_id, game_date);
+CREATE INDEX idx_game_home_team  ON Game(home_team_id);
+CREATE INDEX idx_game_away_team  ON Game(away_team_id);
 CREATE INDEX idx_team_athlete_season ON TeamAthlete(season);
 CREATE INDEX idx_auditlog_admin ON AuditLog(admin_id);
 CREATE INDEX idx_auditlog_entity ON AuditLog(entity, entity_id);

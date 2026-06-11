@@ -28,7 +28,7 @@ async function createDocument(file, body, adminId) {
 
 async function deleteDocument(id) {
     const doc = await getById(id);
-    deleteFile(doc.file_path);
+    await deleteFile(doc.file_path);
     await repo.remove(id);
 }
 
