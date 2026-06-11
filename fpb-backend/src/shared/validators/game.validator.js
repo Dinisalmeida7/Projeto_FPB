@@ -1,6 +1,6 @@
 const { body, query } = require('express-validator');
 
-const STATUSES = ['scheduled', 'ongoing', 'finished', 'postponed', 'cancelled'];
+const STATUSES = ['Agendado', 'Em curso', 'Realizado', 'Adiado', 'Cancelado'];
 
 const createRules = [
     body('competition_id').isInt({ min: 1 }).withMessage('competition_id must be a positive integer.'),
@@ -32,4 +32,9 @@ const listRules = [
     query('date_to').optional().isDate(),
 ];
 
-module.exports = { createRules, updateRules, listRules };
+const resultRules = [
+    body('score_home').isInt({ min: 0 }).withMessage('score_home must be a non-negative integer.'),
+    body('score_away').isInt({ min: 0 }).withMessage('score_away must be a non-negative integer.'),
+];
+
+module.exports = { createRules, updateRules, listRules, resultRules };

@@ -28,7 +28,7 @@ const create = asyncHandler(async (req, res) => {
 const remove = asyncHandler(async (req, res) => {
     await svc.deleteDocument(req.params.id);
     await logAction(req.admin.id, req.admin.email, 'DELETE', 'Document', parseInt(req.params.id), null, req.ip);
-    return success(res, { message: 'Document deleted.' });
+    return res.status(204).end();
 });
 
 module.exports = { getAll, getById, download, create, remove };

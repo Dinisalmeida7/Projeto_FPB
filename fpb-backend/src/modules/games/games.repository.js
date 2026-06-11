@@ -79,7 +79,7 @@ async function create(data) {
     const result = await query(
         `INSERT INTO Game (competition_id, home_team_id, away_team_id, game_date, venue, round, status)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [competition_id, home_team_id, away_team_id, game_date || null, venue || null, round || null, status || 'scheduled']
+        [competition_id, home_team_id, away_team_id, game_date || null, venue || null, round || null, status || 'Agendado']
     );
     return findById(result.insertId);
 }

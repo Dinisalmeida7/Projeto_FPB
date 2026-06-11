@@ -30,7 +30,7 @@ async function findById(id) {
 }
 
 async function getStandings(competitionId) {
-    return query(`
+    const rows = await query(`
         SELECT
             t.id AS team_id,
             t.name AS team_name,
@@ -68,11 +68,35 @@ async function getStandings(competitionId) {
         LEFT JOIN Club cl ON cl.id = t.club_id
         LEFT JOIN Game g ON g.competition_id = ct.competition_id
             AND (g.home_team_id = t.id OR g.away_team_id = t.id)
-            AND g.status = 'finished'
+            AND g.status = 'Realizado'
         WHERE ct.competition_id = ?
         GROUP BY t.id, t.name, cl.name, cl.logo_url
-        ORDER BY wins DESC, (points_for - points_against) DESC
     `, [competitionId]);
+
+    // Standings calculados dinamicamente a partir dos jogos (sem tabela de resultados).
+    // Sistema de pontos FPB: 2 pontos por vitoria, 1 por derrota.
+    return rows
+        .map((r) => {
+            const wins = Number(r.wins) || 0;
+            const losses = Number(r.losses) || 0;
+            const points_for = Number(r.points_for) || 0;
+            const points_against = Number(r.points_against) || 0;
+            return {
+                team_id: r.team_id,
+                team_name: r.team_name,
+                club_name: r.club_name,
+                club_logo: r.club_logo,
+                played: Number(r.played) || 0,
+                wins,
+                losses,
+                points_for,
+                points_against,
+                point_diff: points_for - points_against,
+                points: wins * 2 + losses,
+            };
+        })
+        .sort((a, b) => b.points - a.points || b.point_diff - a.point_diff)
+        .map((r, i) => ({ position: i + 1, ...r }));
 }
 
 async function create(data) {

@@ -25,10 +25,17 @@ const update = asyncHandler(async (req, res) => {
     return success(res, game);
 });
 
+const registerResult = asyncHandler(async (req, res) => {
+    const game = await svc.registerResult(req.params.id, req.body);
+    await logAction(req.admin.id, req.admin.email, 'UPDATE', 'Game', game.id,
+        { score_home: game.score_home, score_away: game.score_away, status: game.status }, req.ip);
+    return success(res, game);
+});
+
 const remove = asyncHandler(async (req, res) => {
     await svc.deleteGame(req.params.id);
     await logAction(req.admin.id, req.admin.email, 'DELETE', 'Game', parseInt(req.params.id), null, req.ip);
-    return success(res, { message: 'Game deleted.' });
+    return res.status(204).end();
 });
 
-module.exports = { getAll, getById, create, update, remove };
+module.exports = { getAll, getById, create, update, registerResult, remove };

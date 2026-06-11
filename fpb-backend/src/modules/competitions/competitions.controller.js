@@ -32,7 +32,7 @@ const update = asyncHandler(async (req, res) => {
 const remove = asyncHandler(async (req, res) => {
     await svc.deleteCompetition(req.params.id);
     await logAction(req.admin.id, req.admin.email, 'DELETE', 'Competition', parseInt(req.params.id), null, req.ip);
-    return success(res, { message: 'Competition deleted.' });
+    return res.status(204).end();
 });
 
 const addTeam = asyncHandler(async (req, res) => {
@@ -42,7 +42,7 @@ const addTeam = asyncHandler(async (req, res) => {
 
 const removeTeam = asyncHandler(async (req, res) => {
     await svc.removeTeam(req.params.id, req.params.teamId);
-    return success(res, { message: 'Team removed from competition.' });
+    return res.status(204).end();
 });
 
 module.exports = { getAll, getById, getStandings, create, update, remove, addTeam, removeTeam };

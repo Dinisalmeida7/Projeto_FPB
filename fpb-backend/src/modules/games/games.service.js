@@ -21,9 +21,22 @@ async function updateGame(id, data) {
     return repo.update(id, data);
 }
 
+// Registar resultado: grava o placar, marca o jogo como 'Realizado' e devolve
+// classificacao_atualizada:true — a classificação é dinâmica, logo reflete o novo
+// resultado imediatamente (sem risco de contar o jogo duas vezes).
+async function registerResult(id, data) {
+    await getById(id);
+    const game = await repo.update(id, {
+        score_home: data.score_home,
+        score_away: data.score_away,
+        status: 'Realizado',
+    });
+    return { ...game, classificacao_atualizada: true };
+}
+
 async function deleteGame(id) {
     await getById(id);
     await repo.remove(id);
 }
 
-module.exports = { getAll, getById, createGame, updateGame, deleteGame };
+module.exports = { getAll, getById, createGame, updateGame, registerResult, deleteGame };

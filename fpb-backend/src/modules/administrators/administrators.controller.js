@@ -35,7 +35,7 @@ const remove = asyncHandler(async (req, res) => {
     if (!req.admin.is_superadmin) throw new AppError('Only super-admins can delete administrators.', 403);
     await svc.deleteAdmin(req.params.id, req.admin.id);
     await logAction(req.admin.id, req.admin.email, 'DELETE', 'Administrator', parseInt(req.params.id), null, req.ip);
-    return success(res, { message: 'Administrator deleted.' });
+    return res.status(204).end();
 });
 
 const setPermissions = asyncHandler(async (req, res) => {

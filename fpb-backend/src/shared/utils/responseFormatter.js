@@ -4,10 +4,8 @@ function success(res, data, statusCode = 200, meta = null) {
     return res.status(statusCode).json(body);
 }
 
-function error(res, message, statusCode = 500, code = null) {
-    const body = { success: false, error: message };
-    if (code) body.code = code;
-    return res.status(statusCode).json(body);
+function error(res, message, statusCode = 500) {
+    return res.status(statusCode).json({ error: message, message, code: statusCode });
 }
 
 function paginate(res, data, total, page, limit) {

@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
 const helmet = require('helmet');
-const { errorHandler } = require('./api/middleware/errorHandler');
+const { errorHandler, notFoundHandler } = require('./api/middleware/errorHandler');
 
 const app = express();
 
@@ -21,6 +21,7 @@ app.use('/api/v1', require('./api/routes'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+app.use(notFoundHandler);
 app.use(errorHandler);
 
 module.exports = app;

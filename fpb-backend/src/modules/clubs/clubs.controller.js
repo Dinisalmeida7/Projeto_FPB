@@ -29,7 +29,7 @@ const update = asyncHandler(async (req, res) => {
 const remove = asyncHandler(async (req, res) => {
     await svc.deleteClub(req.params.id);
     await logAction(req.admin.id, req.admin.email, 'DELETE', 'Club', parseInt(req.params.id), null, req.ip);
-    return success(res, { message: 'Club deleted.' });
+    return res.status(204).end();
 });
 
 module.exports = { getAll, getById, create, update, remove };

@@ -168,7 +168,7 @@ CREATE TABLE Game (
     round           VARCHAR(50) COMMENT 'e.g. Round 1, Quarter-Final',
     score_home      TINYINT UNSIGNED,
     score_away      TINYINT UNSIGNED,
-    status          ENUM('scheduled','ongoing','finished','postponed','cancelled') DEFAULT 'scheduled',
+    status          ENUM('Agendado','Em curso','Realizado','Adiado','Cancelado') DEFAULT 'Agendado',
     notes           TEXT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -273,7 +273,7 @@ CREATE INDEX idx_auditlog_created ON AuditLog(created_at);
 
 -- ============================================================
 -- SEED: Super Admin padrão
--- password: Admin@FPB2025 (bcrypt hash)
+-- email: admin@fpb.pt  |  password: Admin1234 (bcrypt hash, cost 12)
 -- ============================================================
 
 INSERT INTO Administrator (name, email, password, is_superadmin, is_active)
