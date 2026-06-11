@@ -97,26 +97,32 @@ documented in [`T5_API_Specification.md`](./docs/T5_API_Specification.md).
 ---
 
 ## Repository Structure
-FPB Project Report;
 
+```
 fpb-backend/
-├── api/
-│   ├── routes/
-│   └── middleware/
-├── modules/
-│   ├── auth/
-│   ├── clubs/
-│   ├── competitions/
-│   ├── games/
-│   ├── members/
-│   └── documents/
-├── infrastructure/
-│   ├── database/
-│   └── storage/
-└── shared/
-├── models/
-├── validators/
-└── utils/
+├── src/
+│   ├── app.js
+│   ├── server.js
+│   ├── api/
+│   │   ├── routes/
+│   │   └── middleware/
+│   ├── modules/
+│   │   ├── auth/
+│   │   ├── clubs/
+│   │   ├── competitions/
+│   │   ├── games/
+│   │   ├── members/
+│   │   ├── documents/
+│   │   ├── search/
+│   │   └── administrators/
+│   ├── infrastructure/
+│   │   ├── database/
+│   │   └── storage/
+│   └── shared/
+│       ├── validators/
+│       └── utils/
+└── package.json
+```
 
 ---
 
@@ -128,7 +134,7 @@ fpb-backend/
 | Architecture Design | ✅ Complete |
 | Data Modelling | ✅ Complete |
 | API Specification | ✅ Complete |
-| Backend Implementation | 🔄 In progress |
+| Backend Implementation | ✅ Complete |
 | Final Documentation | ⏳ Pending |
 
 ---
