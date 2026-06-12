@@ -56,10 +56,15 @@ async function findById(id) {
         [coach],
         [fpbmember],
     ] = await Promise.all([
-        query('SELECT id, position, jersey_number, height_cm, weight_kg, is_active FROM Athlete   WHERE person_id = ?', [id]),
-        query('SELECT id, license_number, level, is_active                         FROM Referee   WHERE person_id = ?', [id]),
-        query('SELECT id, license_number, is_active                                FROM Coach     WHERE person_id = ?', [id]),
-        query('SELECT id, member_number, role_description, is_active               FROM FPBMember WHERE person_id = ?', [id]),
+        query('SELECT id, license_number, position, jersey_number, height_cm, weight_kg, is_active FROM Athlete WHERE person_id = ?', [id]),
+        query(
+            `SELECT r.id, r.license_number, r.level, r.type, r.association_id, a.name AS association_name, r.is_active
+             FROM Referee r LEFT JOIN Association a ON a.id = r.association_id
+             WHERE r.person_id = ?`,
+            [id]
+        ),
+        query('SELECT id, license_number, level, is_active                FROM Coach     WHERE person_id = ?', [id]),
+        query('SELECT id, member_number, role_description, is_active     FROM FPBMember WHERE person_id = ?', [id]),
     ]);
 
     return {
@@ -98,25 +103,34 @@ async function removePerson(id) {
     await query('DELETE FROM Person WHERE id = ?', [id]);
 }
 
-async function upsertRole(personId, role, roleData, conn = null) {
-    const tables = { athlete: 'Athlete', referee: 'Referee', coach: 'Coach', fpbmember: 'FPBMember' };
-    const table = tables[role];
-    if (!table) return;
+// Whitelist de tabelas e colunas por role — os nomes de colunas NUNCA podem vir
+// do body do pedido para dentro do SQL (injeção via identificadores).
+const ROLE_TABLES = {
+    athlete:   { table: 'Athlete',   fields: ['license_number', 'position', 'jersey_number', 'height_cm', 'weight_kg', 'is_active'] },
+    referee:   { table: 'Referee',   fields: ['license_number', 'level', 'type', 'association_id', 'is_active'] },
+    coach:     { table: 'Coach',     fields: ['license_number', 'level', 'is_active'] },
+    fpbmember: { table: 'FPBMember', fields: ['member_number', 'role_description', 'is_active'] },
+};
 
-    const [existing] = await query(`SELECT id FROM ${table} WHERE person_id = ?`, [personId], conn);
+async function upsertRole(personId, role, roleData, conn = null) {
+    const def = ROLE_TABLES[role];
+    if (!def) return;
+
+    const fields = def.fields.filter(f => roleData[f] !== undefined);
+
+    const [existing] = await query(`SELECT id FROM ${def.table} WHERE person_id = ?`, [personId], conn);
     if (existing) {
-        const fields = Object.keys(roleData);
         if (!fields.length) return;
         await query(
-            `UPDATE ${table} SET ${fields.map(f => `${f} = ?`).join(', ')} WHERE person_id = ?`,
+            `UPDATE ${def.table} SET ${fields.map(f => `${f} = ?`).join(', ')} WHERE person_id = ?`,
             [...fields.map(f => roleData[f]), personId],
             conn
         );
     } else {
-        const fields = ['person_id', ...Object.keys(roleData)];
-        const values = [personId, ...Object.values(roleData)];
+        const cols = ['person_id', ...fields];
+        const values = [personId, ...fields.map(f => roleData[f])];
         await query(
-            `INSERT INTO ${table} (${fields.join(', ')}) VALUES (${fields.map(() => '?').join(', ')})`,
+            `INSERT INTO ${def.table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,
             values,
             conn
         );
@@ -124,9 +138,15 @@ async function upsertRole(personId, role, roleData, conn = null) {
 }
 
 async function removeRole(personId, role, conn = null) {
-    const tables = { athlete: 'Athlete', referee: 'Referee', coach: 'Coach', fpbmember: 'FPBMember' };
-    const table = tables[role];
-    if (table) await query(`DELETE FROM ${table} WHERE person_id = ?`, [personId], conn);
+    const def = ROLE_TABLES[role];
+    if (def) await query(`DELETE FROM ${def.table} WHERE person_id = ?`, [personId], conn);
 }
 
-module.exports = { findAll, findById, createPerson, updatePerson, removePerson, upsertRole, removeRole };
+async function hasRole(personId, role) {
+    const def = ROLE_TABLES[role];
+    if (!def) return false;
+    const [row] = await query(`SELECT id FROM ${def.table} WHERE person_id = ?`, [personId]);
+    return !!row;
+}
+
+module.exports = { findAll, findById, createPerson, updatePerson, removePerson, upsertRole, removeRole, hasRole };

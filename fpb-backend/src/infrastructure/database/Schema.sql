@@ -7,13 +7,16 @@ USE fpb_db;
 -- SET FOREIGN_KEY_CHECKS = 0;
 -- DROP TABLE IF EXISTS AuditLog;
 -- DROP TABLE IF EXISTS Document;
+-- DROP TABLE IF EXISTS DocumentCategory;
 -- DROP TABLE IF EXISTS Permission;
 -- DROP TABLE IF EXISTS Administrator;
+-- DROP TABLE IF EXISTS GameAthlete;
 -- DROP TABLE IF EXISTS GameReferee;
 -- DROP TABLE IF EXISTS Game;
 -- DROP TABLE IF EXISTS CompetitionTeam;
 -- DROP TABLE IF EXISTS Competition;
 -- DROP TABLE IF EXISTS TeamAthlete;
+-- DROP TABLE IF EXISTS CoachTeam;
 -- DROP TABLE IF EXISTS Team;
 -- DROP TABLE IF EXISTS Club;
 -- DROP TABLE IF EXISTS FPBMember;
@@ -21,8 +24,20 @@ USE fpb_db;
 -- DROP TABLE IF EXISTS Referee;
 -- DROP TABLE IF EXISTS Athlete;
 -- DROP TABLE IF EXISTS Person;
+-- DROP TABLE IF EXISTS Association;
 -- SET FOREIGN_KEY_CHECKS = 1;
 -- ============================================================
+
+-- ============================================================
+-- ASSOCIATIONS (T4: Associacao)
+-- ============================================================
+
+CREATE TABLE Association (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(200) NOT NULL UNIQUE COMMENT 'Ex: Associação de Basquetebol do Porto',
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
 -- ============================================================
 -- PERSONS & ROLES
@@ -43,6 +58,7 @@ CREATE TABLE Person (
 CREATE TABLE Athlete (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     person_id   INT UNSIGNED NOT NULL UNIQUE,
+    license_number VARCHAR(50) UNIQUE COMMENT 'T4: numero_licenca — número oficial FPB',
     position    ENUM('PG','SG','SF','PF','C') COMMENT 'Point Guard, Shooting Guard, Small Forward, Power Forward, Center',
     jersey_number TINYINT UNSIGNED,
     height_cm   SMALLINT UNSIGNED,
@@ -55,15 +71,19 @@ CREATE TABLE Referee (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     person_id   INT UNSIGNED NOT NULL UNIQUE,
     license_number VARCHAR(50) UNIQUE,
-    level       ENUM('national','regional','local') DEFAULT 'local',
+    level       ENUM('national','regional','local') DEFAULT 'local' COMMENT 'T4: grau',
+    type        ENUM('Árbitro','Oficial de Mesa') NOT NULL DEFAULT 'Árbitro' COMMENT 'T4: tipo',
+    association_id INT UNSIGNED COMMENT 'T4: Juiz pertence a uma Associacao',
     is_active   TINYINT(1) DEFAULT 1,
-    FOREIGN KEY (person_id) REFERENCES Person(id) ON DELETE CASCADE
+    FOREIGN KEY (person_id) REFERENCES Person(id) ON DELETE CASCADE,
+    FOREIGN KEY (association_id) REFERENCES Association(id) ON DELETE SET NULL
 );
 
 CREATE TABLE Coach (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     person_id   INT UNSIGNED NOT NULL UNIQUE,
     license_number VARCHAR(50) UNIQUE,
+    level       VARCHAR(50) COMMENT 'T4: nivel — Ex: Nível 1, Nível 2, Nível 3',
     is_active   TINYINT(1) DEFAULT 1,
     FOREIGN KEY (person_id) REFERENCES Person(id) ON DELETE CASCADE
 );
@@ -72,7 +92,7 @@ CREATE TABLE FPBMember (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     person_id   INT UNSIGNED NOT NULL UNIQUE,
     member_number VARCHAR(50) UNIQUE,
-    role_description VARCHAR(200),
+    role_description VARCHAR(200) COMMENT 'T4: cargo — Ex: Presidente, Secretário',
     is_active   TINYINT(1) DEFAULT 1,
     FOREIGN KEY (person_id) REFERENCES Person(id) ON DELETE CASCADE
 );
@@ -88,6 +108,7 @@ CREATE TABLE Club (
     acronym     VARCHAR(10),
     city        VARCHAR(100),
     district    VARCHAR(100),
+    association_id INT UNSIGNED COMMENT 'T4: Clube pertence a uma Associacao',
     founded_year YEAR,
     logo_url    VARCHAR(500),
     website     VARCHAR(500),
@@ -96,21 +117,24 @@ CREATE TABLE Club (
     address     VARCHAR(500),
     is_active   TINYINT(1) DEFAULT 1,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (association_id) REFERENCES Association(id) ON DELETE SET NULL
 );
 
+-- T4: Equipa pertence a um Clube OU a uma Associacao (seleções distritais).
+-- Ambas as FKs são nullable; a lógica de negócio garante que pelo menos uma existe.
 CREATE TABLE Team (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(200) NOT NULL,
     club_id     INT UNSIGNED,
+    association_id INT UNSIGNED COMMENT 'T4: seleções distritais pertencem a uma Associacao',
     gender      ENUM('male','female','mixed') NOT NULL DEFAULT 'male',
     age_group   VARCHAR(50) COMMENT 'e.g. Seniores, Sub-20, Sub-16',
-    coach_id    INT UNSIGNED,
     is_active   TINYINT(1) DEFAULT 1,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (club_id) REFERENCES Club(id) ON DELETE SET NULL,
-    FOREIGN KEY (coach_id) REFERENCES Coach(id) ON DELETE SET NULL
+    FOREIGN KEY (association_id) REFERENCES Association(id) ON DELETE SET NULL
 );
 
 CREATE TABLE TeamAthlete (
@@ -124,6 +148,16 @@ CREATE TABLE TeamAthlete (
     UNIQUE KEY uq_team_athlete_season (team_id, athlete_id, season),
     FOREIGN KEY (team_id) REFERENCES Team(id) ON DELETE CASCADE,
     FOREIGN KEY (athlete_id) REFERENCES Athlete(id) ON DELETE CASCADE
+);
+
+-- T4: TreinadorEquipa — um treinador treina N equipas e vice-versa (N:M)
+CREATE TABLE CoachTeam (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    coach_id    INT UNSIGNED NOT NULL,
+    team_id     INT UNSIGNED NOT NULL,
+    UNIQUE KEY uq_coach_team (coach_id, team_id),
+    FOREIGN KEY (coach_id) REFERENCES Coach(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_id) REFERENCES Team(id) ON DELETE CASCADE
 );
 
 -- ============================================================
@@ -166,8 +200,8 @@ CREATE TABLE Game (
     game_date       DATETIME,
     venue           VARCHAR(200),
     round           VARCHAR(50) COMMENT 'e.g. Round 1, Quarter-Final',
-    score_home      TINYINT UNSIGNED,
-    score_away      TINYINT UNSIGNED,
+    score_home      SMALLINT UNSIGNED,
+    score_away      SMALLINT UNSIGNED,
     status          ENUM('Agendado','Em curso','Realizado','Adiado','Cancelado') DEFAULT 'Agendado',
     notes           TEXT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -186,6 +220,21 @@ CREATE TABLE GameReferee (
     UNIQUE KEY uq_game_referee (game_id, referee_id),
     FOREIGN KEY (game_id) REFERENCES Game(id) ON DELETE CASCADE,
     FOREIGN KEY (referee_id) REFERENCES Referee(id) ON DELETE CASCADE
+);
+
+-- T4: AtletaJogo — participação e estatísticas de um atleta num jogo.
+-- Médias por temporada são calculadas dinamicamente a partir destes registos.
+CREATE TABLE GameAthlete (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    game_id         INT UNSIGNED NOT NULL,
+    athlete_id      INT UNSIGNED NOT NULL,
+    points          SMALLINT UNSIGNED DEFAULT 0 COMMENT 'T4: pontos',
+    rebounds        SMALLINT UNSIGNED DEFAULT 0 COMMENT 'T4: ressaltos',
+    assists         SMALLINT UNSIGNED DEFAULT 0 COMMENT 'T4: assistencias',
+    minutes_played  TINYINT UNSIGNED DEFAULT 0 COMMENT 'T4: minutos_jogados',
+    UNIQUE KEY uq_game_athlete (game_id, athlete_id),
+    FOREIGN KEY (game_id) REFERENCES Game(id) ON DELETE CASCADE,
+    FOREIGN KEY (athlete_id) REFERENCES Athlete(id) ON DELETE CASCADE
 );
 
 -- ============================================================
@@ -216,14 +265,22 @@ CREATE TABLE Permission (
 );
 
 -- ============================================================
--- DOCUMENTS
+-- DOCUMENTS (T4: CategoriaDocumento + Documento)
 -- ============================================================
+
+CREATE TABLE DocumentCategory (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL UNIQUE COMMENT 'Ex: Regulamento, Circular',
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
 CREATE TABLE Document (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     title       VARCHAR(300) NOT NULL,
     description TEXT,
-    category    VARCHAR(100),
+    category_id INT UNSIGNED COMMENT 'T4: FK para CategoriaDocumento',
+    published_date DATE COMMENT 'T4: data_publicacao',
     file_path   VARCHAR(500) NOT NULL,
     file_name   VARCHAR(255) NOT NULL,
     file_size   INT UNSIGNED,
@@ -231,6 +288,7 @@ CREATE TABLE Document (
     uploaded_by INT UNSIGNED,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES DocumentCategory(id) ON DELETE SET NULL,
     FOREIGN KEY (uploaded_by) REFERENCES Administrator(id) ON DELETE SET NULL
 );
 
@@ -274,6 +332,8 @@ CREATE INDEX idx_auditlog_created ON AuditLog(created_at);
 -- ============================================================
 -- SEED: Super Admin padrão
 -- email: admin@fpb.pt  |  password: Admin1234 (bcrypt hash, cost 12)
+-- ATENÇÃO: em produção, alterar esta password imediatamente após o
+-- primeiro login (ou substituir o hash antes de correr o script).
 -- ============================================================
 
 INSERT INTO Administrator (name, email, password, is_superadmin, is_active)
@@ -284,4 +344,3 @@ VALUES (
     1,
     1
 );
-SELECT * FROM Administrator

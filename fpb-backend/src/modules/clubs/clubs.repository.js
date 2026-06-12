@@ -1,6 +1,6 @@
 const { query } = require('../../infrastructure/database/connection');
 
-const COLS = 'id, name, short_name, acronym, city, district, founded_year, logo_url, website, email, phone, address, is_active, created_at, updated_at';
+const COLS = 'id, name, short_name, acronym, city, district, association_id, founded_year, logo_url, website, email, phone, address, is_active, created_at, updated_at';
 
 function buildWhere({ search, district, is_active }) {
     const clauses = [];
@@ -28,24 +28,38 @@ async function findAll({ search, district, is_active, page = 1, limit = 20 } = {
     return { rows, total };
 }
 
+// Ficha composta (T5: GET /clubes/:id inclui associação e equipas)
 async function findById(id) {
-    const [row] = await query(`SELECT ${COLS} FROM Club WHERE id = ?`, [id]);
-    return row || null;
+    const [row] = await query(
+        `SELECT ${COLS.split(', ').map(c => `c.${c}`).join(', ')},
+                a.name AS association_name
+         FROM Club c
+         LEFT JOIN Association a ON a.id = c.association_id
+         WHERE c.id = ?`,
+        [id]
+    );
+    if (!row) return null;
+
+    const teams = await query(
+        'SELECT id, name, gender, age_group, is_active FROM Team WHERE club_id = ? ORDER BY name',
+        [id]
+    );
+    return { ...row, teams };
 }
 
 async function create(data) {
-    const { name, short_name, acronym, city, district, founded_year, logo_url, website, email, phone, address } = data;
+    const { name, short_name, acronym, city, district, association_id, founded_year, logo_url, website, email, phone, address } = data;
     const result = await query(
-        `INSERT INTO Club (name, short_name, acronym, city, district, founded_year, logo_url, website, email, phone, address)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [name, short_name || null, acronym || null, city || null, district || null,
+        `INSERT INTO Club (name, short_name, acronym, city, district, association_id, founded_year, logo_url, website, email, phone, address)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [name, short_name || null, acronym || null, city || null, district || null, association_id || null,
          founded_year || null, logo_url || null, website || null, email || null, phone || null, address || null]
     );
     return findById(result.insertId);
 }
 
 async function update(id, data) {
-    const fields = ['name', 'short_name', 'acronym', 'city', 'district', 'founded_year',
+    const fields = ['name', 'short_name', 'acronym', 'city', 'district', 'association_id', 'founded_year',
                     'logo_url', 'website', 'email', 'phone', 'address', 'is_active'];
     const updates = fields.filter(f => data[f] !== undefined);
     if (!updates.length) return findById(id);

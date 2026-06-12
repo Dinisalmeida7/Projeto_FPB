@@ -1,6 +1,6 @@
 # Resultados dos Testes Funcionais — FPB API
 
-> Gerado automaticamente por `tests/run-tests.js` em 2026-06-11T21:15:36.606Z
+> Gerado automaticamente por `tests/run-tests.js` em 2026-06-12T08:16:27.102Z
 
 **Resumo:** 19/19 testes passaram.
 

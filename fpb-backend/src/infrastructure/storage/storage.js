@@ -21,11 +21,17 @@ const ALLOWED_MIME_TYPES = new Set([
     'text/plain',
 ]);
 
+// O MIME type é declarado pelo cliente e pode ser forjado — validar também a
+// extensão impede, por exemplo, um .exe enviado como application/pdf.
+const ALLOWED_EXTENSIONS = new Set([
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif', '.txt',
+]);
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
     filename: (req, file, cb) => {
         const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-        cb(null, `${unique}${path.extname(file.originalname)}`);
+        cb(null, `${unique}${path.extname(file.originalname).toLowerCase()}`);
     },
 });
 
@@ -33,11 +39,14 @@ const upload = multer({
     storage,
     limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE_MB || '20') * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new AppError(`File type not allowed: ${file.mimetype}`, 400), false);
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+            return cb(new AppError(`File type not allowed: ${file.mimetype}`, 400), false);
         }
+        if (!ALLOWED_EXTENSIONS.has(ext)) {
+            return cb(new AppError(`File extension not allowed: ${ext || '(none)'}`, 400), false);
+        }
+        cb(null, true);
     },
 });
 

@@ -1,349 +1,175 @@
-# API FPB - Documentação dos Endpoints
+# API FPB — Documentação dos Endpoints
 
-## Base URL
-```
-http://localhost:8001/api
-```
+REST API da plataforma de gestão de informação desportiva (Federação Portuguesa de Basquetebol).
+
+## Convenções (T5.1)
+
+| Convenção | Detalhe |
+|---|---|
+| Base URL | `http://localhost:3000/api/v1` |
+| Formato | JSON em todos os pedidos e respostas (exceção: upload de documentos em `multipart/form-data`) |
+| Autenticação | JWT no header `Authorization: Bearer <token>` — obrigatório nos endpoints marcados 🔒 |
+| Paginação | `?page=` e `?limit=` (máx. 100) nas listagens |
+| Datas | ISO 8601 — `YYYY-MM-DD` / `YYYY-MM-DDTHH:MM:SS` |
+| Sucesso | `{ "success": true, "data": ..., "meta": { ... } }` |
+| Erro | `{ "error": "Not Found", "message": "...", "code": 404 }` |
+
+**Códigos de estado:** `200` OK · `201` Created · `204` No Content (DELETE) · `400` Bad Request · `401` Unauthorized · `403` Forbidden · `404` Not Found · `409` Conflict · `413` Payload Too Large · `429` Too Many Requests · `500` Internal Server Error
+
+**Permissões:** os endpoints 🔒 exigem token válido. Operações de escrita exigem ainda permissão na área respetiva (`clubs`, `competitions`, `games`, `members`, `documents`, `administrators`) com a flag adequada (`can_create`, `can_edit`, `can_delete`), verificada na base de dados a cada pedido. O super-admin tem acesso total.
 
 ---
 
-## 📋 Módulo: Clubes
+## Autenticação
 
-### 1. Listar todos os clubes
-```bash
-GET /api/clubs
-```
+| Método | Endpoint | Descrição |
+|---|---|---|
+| POST | `/auth/login` | Login do administrador (rate-limited) |
+| POST | `/auth/logout` 🔒 | Logout (regista no log de auditoria) |
 
-**Resposta de sucesso (200):**
 ```json
-{
-  "success": true,
-  "count": 2,
-  "data": [...]
-}
+POST /auth/login
+{ "email": "admin@fpb.pt", "password": "..." }
+
+→ 200 { "success": true, "data": { "token": "...", "admin": { "id": 1, "name": "...", "email": "...", "is_superadmin": 1 } } }
 ```
 
-### 2. Obter clube por ID
-```bash
-GET /api/clubs/:id
-```
+## Associações
 
-### 3. Criar novo clube
-```bash
-POST /api/clubs
-Content-Type: application/json
+> A gestão de associações e equipas usa a área de permissões `clubs` (T4 agrupa Clubes, Equipas e Associações no mesmo grupo funcional).
 
-{
-  "name": "SL Benfica",
-  "city": "Lisboa",
-  "foundedYear": 1904,
-  "stadium": "Pavilhão Fidelidade",
-  "email": "basquete@slbenfica.pt",
-  "phone": "+351 217 219 500",
-  "website": "https://www.slbenfica.pt",
-  "logo": ""
-}
-```
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/associations` | Listar associações (`?search=`, paginado) |
+| GET | `/associations/:id` | Ficha da associação (inclui `clubs` filiados e `teams`/seleções) |
+| POST | `/associations` 🔒 | Criar associação (`{ "name": "..." }`) |
+| PUT | `/associations/:id` 🔒 | Editar associação |
+| DELETE | `/associations/:id` 🔒 | Remover (clubes/equipas/juízes ficam sem associação — não são apagados) |
 
-### 4. Atualizar clube
-```bash
-PUT /api/clubs/:id
-Content-Type: application/json
+## Clubes
 
-{
-  "name": "SL Benfica",
-  "city": "Lisboa"
-}
-```
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/clubs` | Listar clubes (`?search=`, `?district=`, `?is_active=`, paginado) |
+| GET | `/clubs/:id` | Ficha do clube (inclui `association_name` e `teams`) |
+| POST | `/clubs` 🔒 | Criar clube |
+| PUT | `/clubs/:id` 🔒 | Editar clube |
+| DELETE | `/clubs/:id` 🔒 | Remover clube |
 
-### 5. Eliminar clube
-```bash
-DELETE /api/clubs/:id
-```
+Campos: `name`*, `short_name`, `acronym`, `city`, `district`, `association_id`, `founded_year`, `logo_url`, `website`, `email`, `phone`, `address`, `is_active`.
+
+## Equipas
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/teams` | Listar (`?search=`, `?club_id=`, `?association_id=`, `?gender=`, `?age_group=`, paginado) |
+| GET | `/teams/:id` | Ficha da equipa (inclui clube/associação, `coaches` e `athletes` por época) |
+| POST | `/teams` 🔒 | Criar equipa — exige `club_id` **ou** `association_id` (seleções distritais) |
+| PUT | `/teams/:id` 🔒 | Editar equipa (a regra clube-ou-associação mantém-se) |
+| DELETE | `/teams/:id` 🔒 | Remover equipa (409 se tiver jogos associados) |
+| POST | `/teams/:id/coaches` 🔒 | Associar treinador (`{ "coach_id": N }`) |
+| DELETE | `/teams/:id/coaches/:coachId` 🔒 | Desassociar treinador |
+| POST | `/teams/:id/athletes` 🔒 | Inscrever atleta no plantel (`{ "athlete_id": N, "season": "2024/2025", "jersey_number": N }`) |
+| DELETE | `/teams/:id/athletes/:athleteId` 🔒 | Remover atleta do plantel (`?season=` opcional; sem season remove todas as épocas) |
+
+Campos: `name`*, `club_id`, `association_id`, `gender` (`male|female|mixed`), `age_group`, `is_active`.
+
+## Competições
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/competitions` | Listar (`?search=`, `?season=`, `?status=`, paginado) |
+| GET | `/competitions/:id` | Detalhe da competição |
+| GET | `/competitions/:id/standings` | Classificação (calculada dinamicamente; 2 pts vitória, 1 derrota) |
+| POST | `/competitions` 🔒 | Criar competição |
+| PUT | `/competitions/:id` 🔒 | Editar competição |
+| DELETE | `/competitions/:id` 🔒 | Remover competição |
+| POST | `/competitions/:id/teams` 🔒 | Inscrever equipa (`{ "team_id": N }`) |
+| DELETE | `/competitions/:id/teams/:teamId` 🔒 | Remover equipa da competição |
+
+Campos: `name`*, `season`* (`YYYY/YYYY`), `gender`, `age_group`, `level`, `status` (`scheduled|ongoing|finished|cancelled`), `start_date`, `end_date`, `description`.
+
+## Jogos
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/games` | Listar (`?competition_id=`, `?team_id=`, `?status=`, `?date_from=`, `?date_to=`, paginado) |
+| GET | `/games/:id` | Detalhe (inclui `referees` e `athletes` com estatísticas) |
+| POST | `/games` 🔒 | Agendar jogo |
+| PUT | `/games/:id` 🔒 | Editar jogo |
+| PUT | `/games/:id/result` 🔒 | Registar resultado (`{ "score_home": N, "score_away": N }`) → estado `Realizado` |
+| DELETE | `/games/:id` 🔒 | Remover jogo |
+| POST | `/games/:id/referees` 🔒 | Nomear juiz (`{ "referee_id": N, "role": "main|assistant|table" }`) |
+| DELETE | `/games/:id/referees/:refereeId` 🔒 | Remover nomeação de juiz |
+| POST | `/games/:id/athletes` 🔒 | Registar participação de atleta (`{ "athlete_id": N, "points": N, "rebounds": N, "assists": N, "minutes_played": N }`) |
+| PUT | `/games/:id/athletes/:athleteId` 🔒 | Editar estatísticas do atleta no jogo |
+| DELETE | `/games/:id/athletes/:athleteId` 🔒 | Remover atleta do jogo |
+
+Estados do jogo: `Agendado`, `Em curso`, `Realizado`, `Adiado`, `Cancelado`.
+
+## Membros
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/members` | Listar (`?search=`, `?role=athlete\|referee\|coach\|fpbmember`, paginado) |
+| GET | `/members/:id` | Perfil completo (dados pessoais + secção por cada role) |
+| POST | `/members` 🔒 | Criar pessoa (aceita `roles: { athlete: {...}, ... }` embutido) |
+| PUT | `/members/:id` 🔒 | Editar pessoa (e roles embutidos; `roles.X: null` remove o role) |
+| DELETE | `/members/:id` 🔒 | Remover pessoa |
+| POST | `/members/:id/roles/:role` 🔒 | Atribuir role (409 se já existir) |
+| PUT | `/members/:id/roles/:role` 🔒 | Editar dados de um role (404 se não existir) |
+| DELETE | `/members/:id/roles/:role` 🔒 | Remover role |
+
+Campos por role:
+- **athlete**: `license_number`, `position` (`PG|SG|SF|PF|C`), `jersey_number`, `height_cm`, `weight_kg`, `is_active`
+- **referee**: `license_number`, `level` (`national|regional|local`), `type` (`Árbitro|Oficial de Mesa`), `association_id`, `is_active`
+- **coach**: `license_number`, `level`, `is_active`
+- **fpbmember**: `member_number`, `role_description`, `is_active`
+
+## Documentos
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/documents` | Listar (`?category_id=`, paginado) |
+| GET | `/documents/:id` | Metadados do documento |
+| GET | `/documents/:id/download` | Descarregar ficheiro |
+| POST | `/documents` 🔒 | Carregar documento (`multipart/form-data`: `file` + `title`*, `description`, `category_id`, `published_date`) |
+| PUT | `/documents/:id` 🔒 | Editar metadados (o ficheiro não é substituído) |
+| DELETE | `/documents/:id` 🔒 | Remover documento (apaga também o ficheiro) |
+| GET | `/documents/categories` | Listar categorias |
+| POST | `/documents/categories` 🔒 | Criar categoria (`{ "name": "Regulamento" }`) |
+| PUT | `/documents/categories/:id` 🔒 | Editar categoria |
+| DELETE | `/documents/categories/:id` 🔒 | Remover categoria (documentos ficam sem categoria) |
+
+Tipos aceites: PDF, Word, Excel, imagens (JPG/PNG/GIF) e TXT — máx. `MAX_FILE_SIZE_MB`.
+
+## Pesquisa
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/search?q=palavra` | Pesquisa global (`?type=all\|clubs\|members\|competitions\|games`, `?limit=` por tipo, máx. 25) |
+
+Resposta: lista plana com `type` em cada resultado + `meta.counts` por tipo de entidade.
+
+## Administração
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/administrators` 🔒 | Listar administradores (acesso: área `administrators`) |
+| GET | `/administrators/:id` 🔒 | Consultar administrador (próprio ou área `administrators`) |
+| POST | `/administrators` 🔒 | Criar administrador (só super-admin pode criar super-admins) |
+| PUT | `/administrators/:id` 🔒 | Editar (próprio ou área; `is_superadmin`/`is_active` só por super-admin) |
+| DELETE | `/administrators/:id` 🔒 | **Desativar** administrador (soft delete; não pode desativar a própria conta) |
+| GET | `/administrators/:id/permissions` 🔒 | Consultar permissões |
+| PUT | `/administrators/:id/permissions` 🔒 | Atualizar permissões (não pode alterar as próprias) |
+| GET | `/logs` 🔒 | Log de auditoria (`?admin_id=`, `?action=`, `?entity=`, paginado) |
+
+Password: mínimo 8 caracteres com maiúscula, minúscula, dígito e carácter especial.
 
 ---
 
-## 🏆 Módulo: Competições
+## Outros
 
-### 1. Listar todas as competições
-```bash
-GET /api/competitions
-```
-
-### 2. Obter competição por ID
-```bash
-GET /api/competitions/:id
-```
-
-### 3. Criar nova competição
-```bash
-POST /api/competitions
-Content-Type: application/json
-
-{
-  "name": "Liga Portuguesa de Basquetebol",
-  "season": "2024/2025",
-  "type": "Liga",
-  "startDate": "2024-09-01",
-  "endDate": "2025-05-31",
-  "description": "Campeonato nacional da primeira divisão"
-}
-```
-
-**Tipos de competição disponíveis:**
-- Liga
-- Taça
-- Supertaça
-- Torneio
-- Amigável
-
-### 4. Atualizar competição
-```bash
-PUT /api/competitions/:id
-Content-Type: application/json
-```
-
-### 5. Eliminar competição
-```bash
-DELETE /api/competitions/:id
-```
-
----
-
-## ⚽ Módulo: Jogos
-
-### 1. Listar todos os jogos
-```bash
-GET /api/games
-```
-
-### 2. Obter jogo por ID
-```bash
-GET /api/games/:id
-```
-
-### 3. Criar novo jogo
-```bash
-POST /api/games
-Content-Type: application/json
-
-{
-  "competition": "6a15c0c396879524c7420413",
-  "homeClub": "6a15c060f5ff0562ffe116c6",
-  "awayClub": "6a15c065f5ff0562ffe116c7",
-  "date": "2024-10-15",
-  "time": "20:30",
-  "location": "Pavilhão Fidelidade",
-  "status": "Agendado",
-  "round": 1,
-  "homeScore": null,
-  "awayScore": null,
-  "observations": ""
-}
-```
-
-**Status disponíveis:**
-- Agendado
-- Em curso
-- Finalizado
-- Adiado
-- Cancelado
-
-### 4. Atualizar jogo (adicionar resultado)
-```bash
-PUT /api/games/:id
-Content-Type: application/json
-
-{
-  "homeScore": 85,
-  "awayScore": 78,
-  "status": "Finalizado"
-}
-```
-
-### 5. Eliminar jogo
-```bash
-DELETE /api/games/:id
-```
-
-### 6. Listar jogos por competição
-```bash
-GET /api/games/competition/:competitionId
-```
-
-### 7. Listar jogos por clube
-```bash
-GET /api/games/club/:clubId
-```
-
----
-
-## 📝 Exemplos de uso com curl
-
-### Criar um clube:
-```bash
-curl -X POST http://localhost:8001/api/clubs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "FC Porto",
-    "city": "Porto",
-    "foundedYear": 1893
-  }'
-```
-
-### Criar uma competição:
-```bash
-curl -X POST http://localhost:8001/api/competitions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Taça de Portugal",
-    "season": "2024/2025",
-    "type": "Taça",
-    "startDate": "2024-11-01",
-    "endDate": "2025-04-30"
-  }'
-```
-
-### Criar um jogo:
-```bash
-curl -X POST http://localhost:8001/api/games \
-  -H "Content-Type: application/json" \
-  -d '{
-    "competition": "ID_DA_COMPETICAO",
-    "homeClub": "ID_CLUBE_CASA",
-    "awayClub": "ID_CLUBE_VISITANTE",
-    "date": "2024-12-15",
-    "time": "20:30",
-    "location": "Pavilhão XYZ",
-    "round": 1
-  }'
-```
-
----
-
-## ✅ Estrutura de Resposta
-
-### Sucesso:
-```json
-{
-  "success": true,
-  "message": "Operação realizada com sucesso",
-  "data": {...}
-}
-```
-
-### Erro:
-```json
-{
-  "success": false,
-  "message": "Descrição do erro"
-}
-```
-
----
-
-## 🔧 Tecnologias Utilizadas
-
-- **Backend**: Node.js + Express
-- **Base de Dados**: MongoDB + Mongoose
-- **Porta**: 8001
-- **Ambiente**: Development
-
----
-
-## 📦 Estrutura do Projeto
-
-```
-fpb-backend/
-├── src/
-│   ├── app.js                    # Configuração do Express
-│   ├── server.js                 # Início do servidor
-│   ├── infrastructure/
-│   │   └── database/
-│   │       └── connection.js     # Conexão MongoDB
-│   ├── shared/
-│   │   └── models/
-│   │       ├── Club.js           # Modelo de Clube
-│   │       ├── Competition.js    # Modelo de Competição
-│   │       └── Game.js           # Modelo de Jogo
-│   └── modules/
-│       ├── clubs/
-│       │   ├── club.repository.js
-│       │   ├── club.service.js
-│       │   ├── club.controller.js
-│       │   └── club.routes.js
-│       ├── competitions/
-│       │   ├── competition.repository.js
-│       │   ├── competition.service.js
-│       │   ├── competition.controller.js
-│       │   └── competition.routes.js
-│       └── games/
-│           ├── game.repository.js
-│           ├── game.service.js
-│           ├── game.controller.js
-│           └── game.routes.js
-└── package.json
-```
-
----
-
-## 🚀 Como Executar
-
-1. **Instalar dependências:**
-```bash
-cd /app/fpb-backend
-yarn install
-```
-
-2. **Iniciar servidor:**
-```bash
-npm start
-# ou
-npm run dev  # com nodemon para hot reload
-```
-
-3. **Verificar status:**
-```bash
-sudo supervisorctl status fpb-backend
-```
-
----
-
-## 📊 Modelos de Dados
-
-### Club (Clube)
-- name: String (obrigatório)
-- city: String (obrigatório)
-- foundedYear: Number (obrigatório)
-- stadium: String
-- email: String
-- phone: String
-- website: String
-- logo: String
-- active: Boolean
-
-### Competition (Competição)
-- name: String (obrigatório)
-- season: String (obrigatório)
-- type: Enum (obrigatório)
-- startDate: Date (obrigatório)
-- endDate: Date (obrigatório)
-- description: String
-- active: Boolean
-
-### Game (Jogo)
-- competition: ObjectId (ref: Competition)
-- homeClub: ObjectId (ref: Club)
-- awayClub: ObjectId (ref: Club)
-- date: Date (obrigatório)
-- time: String (HH:MM)
-- location: String (obrigatório)
-- homeScore: Number
-- awayScore: Number
-- status: Enum
-- round: Number
-- observations: String
-
----
-
-**Desenvolvido para a Federação Portuguesa de Basquetebol (FPB)**
+- `GET /health` — health check (fora do prefixo `/api/v1`)
+- Rate limiting: login (10 tentativas/15 min) + global (1000 pedidos/15 min, configurável)
+- Em produção a API deve estar atrás de um reverse proxy com TLS (HTTPS) e `TRUST_PROXY=1`

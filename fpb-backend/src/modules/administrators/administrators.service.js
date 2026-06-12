@@ -26,12 +26,13 @@ async function updateAdmin(id, data) {
     return repo.update(id, data);
 }
 
+// Soft delete (T5: "Desativar administrador")
 async function deleteAdmin(id, requesterId) {
     if (parseInt(id) === parseInt(requesterId)) {
-        throw new AppError('Cannot delete your own account.', 400);
+        throw new AppError('Cannot deactivate your own account.', 400);
     }
     await getById(id);
-    await repo.remove(id);
+    await repo.deactivate(id);
 }
 
 async function setPermissions(adminId, permissions) {
@@ -46,4 +47,13 @@ async function setPermissions(adminId, permissions) {
     return repo.getPermissions(adminId);
 }
 
-module.exports = { getAll, getById, createAdmin, updateAdmin, deleteAdmin, setPermissions };
+async function getPermissions(adminId) {
+    await getById(adminId);
+    return repo.getPermissions(adminId);
+}
+
+async function getLogs(filters) {
+    return repo.findLogs(filters);
+}
+
+module.exports = { getAll, getById, createAdmin, updateAdmin, deleteAdmin, setPermissions, getPermissions, getLogs };

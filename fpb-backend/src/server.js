@@ -1,4 +1,11 @@
 require('dotenv').config();
+
+// Fail-fast: sem um segredo JWT forte, a autenticação inteira fica comprometida.
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    console.error('FATAL: JWT_SECRET is missing or too short (min. 32 chars). Set it in .env before starting.');
+    process.exit(1);
+}
+
 const app = require('./app');
 const { testConnection, closePool } = require('./infrastructure/database/connection');
 

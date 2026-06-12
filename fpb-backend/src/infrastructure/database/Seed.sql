@@ -13,12 +13,18 @@
 
 USE fpb_db;
 
+-- Associações (T4: Associacao) --------------------------------
+INSERT INTO Association (name) VALUES
+('Associação de Basquetebol de Lisboa'),
+('Associação de Basquetebol do Porto'),
+('Associação de Basquetebol do Algarve');
+
 -- Clubes ------------------------------------------------------
-INSERT INTO Club (name, short_name, acronym, city, district, founded_year) VALUES
-('Sporting Clube de Portugal', 'Sporting', 'SCP', 'Lisboa',   'Lisboa', 1906),
-('Futebol Clube do Porto',     'FC Porto', 'FCP', 'Porto',    'Porto',  1893),
-('Sport Lisboa e Benfica',     'Benfica',  'SLB', 'Lisboa',   'Lisboa', 1904),
-('Imortal Basketball Clube',   'Imortal',  'IBC', 'Albufeira','Faro',   1930);
+INSERT INTO Club (name, short_name, acronym, city, district, founded_year, association_id) VALUES
+('Sporting Clube de Portugal', 'Sporting', 'SCP', 'Lisboa',   'Lisboa', 1906, (SELECT id FROM Association WHERE name = 'Associação de Basquetebol de Lisboa')),
+('Futebol Clube do Porto',     'FC Porto', 'FCP', 'Porto',    'Porto',  1893, (SELECT id FROM Association WHERE name = 'Associação de Basquetebol do Porto')),
+('Sport Lisboa e Benfica',     'Benfica',  'SLB', 'Lisboa',   'Lisboa', 1904, (SELECT id FROM Association WHERE name = 'Associação de Basquetebol de Lisboa')),
+('Imortal Basketball Clube',   'Imortal',  'IBC', 'Albufeira','Faro',   1930, (SELECT id FROM Association WHERE name = 'Associação de Basquetebol do Algarve'));
 
 -- Equipas (uma equipa sénior masculina por clube) -------------
 INSERT INTO Team (name, club_id, gender, age_group)

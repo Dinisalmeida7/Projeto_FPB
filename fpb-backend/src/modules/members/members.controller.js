@@ -32,4 +32,24 @@ const remove = asyncHandler(async (req, res) => {
     return res.status(204).end();
 });
 
-module.exports = { getAll, getById, create, update, remove };
+// ---------- Roles dedicados ----------
+
+const addRole = asyncHandler(async (req, res) => {
+    const result = await svc.addRole(req.params.id, req.params.role, req.body);
+    await logAction(req.admin.id, req.admin.email, 'CREATE', 'PersonRole', parseInt(req.params.id), { role: req.params.role }, req.ip);
+    return success(res, result, 201);
+});
+
+const updateRole = asyncHandler(async (req, res) => {
+    const result = await svc.editRole(req.params.id, req.params.role, req.body);
+    await logAction(req.admin.id, req.admin.email, 'UPDATE', 'PersonRole', parseInt(req.params.id), { role: req.params.role, ...req.body }, req.ip);
+    return success(res, result);
+});
+
+const removeRole = asyncHandler(async (req, res) => {
+    await svc.removeRoleFromMember(req.params.id, req.params.role);
+    await logAction(req.admin.id, req.admin.email, 'DELETE', 'PersonRole', parseInt(req.params.id), { role: req.params.role }, req.ip);
+    return res.status(204).end();
+});
+
+module.exports = { getAll, getById, create, update, remove, addRole, updateRole, removeRole };

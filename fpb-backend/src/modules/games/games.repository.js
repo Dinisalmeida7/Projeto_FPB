@@ -62,16 +62,27 @@ async function findById(id) {
     );
     if (!game) return null;
 
-    const referees = await query(
-        `SELECT r.id, p.first_name, p.last_name, r.license_number, gr.role
-         FROM GameReferee gr
-         JOIN Referee r ON r.id = gr.referee_id
-         JOIN Person  p ON p.id = r.person_id
-         WHERE gr.game_id = ?`,
-        [id]
-    );
+    const [referees, athletes] = await Promise.all([
+        query(
+            `SELECT r.id, p.first_name, p.last_name, r.license_number, r.type, gr.role
+             FROM GameReferee gr
+             JOIN Referee r ON r.id = gr.referee_id
+             JOIN Person  p ON p.id = r.person_id
+             WHERE gr.game_id = ?`,
+            [id]
+        ),
+        query(
+            `SELECT ga.athlete_id, p.first_name, p.last_name, a.license_number,
+                    ga.points, ga.rebounds, ga.assists, ga.minutes_played
+             FROM GameAthlete ga
+             JOIN Athlete a ON a.id = ga.athlete_id
+             JOIN Person  p ON p.id = a.person_id
+             WHERE ga.game_id = ?`,
+            [id]
+        ),
+    ]);
 
-    return { ...game, referees };
+    return { ...game, referees, athletes };
 }
 
 async function create(data) {
@@ -100,4 +111,88 @@ async function remove(id) {
     await query('DELETE FROM Game WHERE id = ?', [id]);
 }
 
-module.exports = { findAll, findById, create, update, remove };
+// ---------- Juízes do jogo (T4: JuizJogo / T5: /jogos/:id/juizes) ----------
+
+async function findRefereeById(refereeId) {
+    const [row] = await query(
+        `SELECT r.id, p.first_name, p.last_name, r.license_number, r.type, r.is_active
+         FROM Referee r JOIN Person p ON p.id = r.person_id
+         WHERE r.id = ?`,
+        [refereeId]
+    );
+    return row || null;
+}
+
+async function addReferee(gameId, refereeId, role = 'main') {
+    await query(
+        'INSERT INTO GameReferee (game_id, referee_id, role) VALUES (?, ?, ?)',
+        [gameId, refereeId, role]
+    );
+}
+
+async function removeReferee(gameId, refereeId) {
+    const result = await query(
+        'DELETE FROM GameReferee WHERE game_id = ? AND referee_id = ?',
+        [gameId, refereeId]
+    );
+    return result.affectedRows > 0;
+}
+
+// ---------- Atletas do jogo (T4: AtletaJogo / T5: /jogos/:id/atletas) ----------
+
+async function findAthleteById(athleteId) {
+    const [row] = await query(
+        `SELECT a.id, p.first_name, p.last_name, a.license_number, a.is_active
+         FROM Athlete a JOIN Person p ON p.id = a.person_id
+         WHERE a.id = ?`,
+        [athleteId]
+    );
+    return row || null;
+}
+
+async function findGameAthlete(gameId, athleteId) {
+    const [row] = await query(
+        `SELECT ga.game_id, ga.athlete_id, p.first_name, p.last_name,
+                ga.points, ga.rebounds, ga.assists, ga.minutes_played
+         FROM GameAthlete ga
+         JOIN Athlete a ON a.id = ga.athlete_id
+         JOIN Person  p ON p.id = a.person_id
+         WHERE ga.game_id = ? AND ga.athlete_id = ?`,
+        [gameId, athleteId]
+    );
+    return row || null;
+}
+
+async function addAthlete(gameId, athleteId, stats) {
+    await query(
+        `INSERT INTO GameAthlete (game_id, athlete_id, points, rebounds, assists, minutes_played)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [gameId, athleteId, stats.points ?? 0, stats.rebounds ?? 0, stats.assists ?? 0, stats.minutes_played ?? 0]
+    );
+    return findGameAthlete(gameId, athleteId);
+}
+
+async function updateAthleteStats(gameId, athleteId, stats) {
+    const fields = ['points', 'rebounds', 'assists', 'minutes_played'].filter(f => stats[f] !== undefined);
+    if (fields.length) {
+        await query(
+            `UPDATE GameAthlete SET ${fields.map(f => `${f} = ?`).join(', ')} WHERE game_id = ? AND athlete_id = ?`,
+            [...fields.map(f => stats[f]), gameId, athleteId]
+        );
+    }
+    return findGameAthlete(gameId, athleteId);
+}
+
+async function removeAthlete(gameId, athleteId) {
+    const result = await query(
+        'DELETE FROM GameAthlete WHERE game_id = ? AND athlete_id = ?',
+        [gameId, athleteId]
+    );
+    return result.affectedRows > 0;
+}
+
+module.exports = {
+    findAll, findById, create, update, remove,
+    findRefereeById, addReferee, removeReferee,
+    findAthleteById, findGameAthlete, addAthlete, updateAthleteStats, removeAthlete,
+};

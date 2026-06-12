@@ -27,6 +27,7 @@ Criar a base de dados:
 
 ```sql
 mysql -u root -p < src/infrastructure/database/Schema.sql
+mysql -u root -p fpb_db < src/infrastructure/database/Seed.sql   # dados de demonstração (opcional)
 ```
 
 ## Arranque
@@ -65,6 +66,12 @@ Health check: `GET /health`
 | `REQUEST_BODY_LIMIT` | Tamanho máximo do body HTTP | `1mb` |
 | `RATE_LIMIT_WINDOW_MIN` | Janela do rate limit em minutos (login) | `15` |
 | `RATE_LIMIT_MAX` | Tentativas máximas de login por janela | `10` |
+| `RATE_LIMIT_GLOBAL_WINDOW_MIN` | Janela do rate limit global em minutos | `15` |
+| `RATE_LIMIT_GLOBAL_MAX` | Pedidos máximos por janela (toda a API) | `1000` |
+| `TRUST_PROXY` | Nº de hops de reverse proxy confiáveis (1 atrás de nginx; 0 = sem proxy) | `0` |
+
+> `JWT_SECRET` tem de ter pelo menos 32 caracteres — o servidor recusa arrancar caso contrário. Gerar com:
+> `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
 
 ---
 
@@ -86,17 +93,20 @@ src/
 ├── infrastructure/
 │   ├── database/
 │   │   ├── connection.js          # Pool MySQL2 + withTransaction
-│   │   └── Schema.sql             # Definição de tabelas e seed
+│   │   ├── Schema.sql             # Definição de tabelas e seed do super-admin
+│   │   └── Seed.sql               # Dados de demonstração (associações, clubes, equipas, competição)
 │   └── storage/
-│       └── storage.js             # Multer + deleteFile
+│       └── storage.js             # Multer + deleteFile (whitelist MIME + extensão)
 ├── modules/
 │   ├── auth/                      # Login / Logout
-│   ├── clubs/                     # Clubes
-│   ├── competitions/              # Competições + classificações
-│   ├── games/                     # Jogos + resultados
-│   ├── members/                   # Pessoas (atletas, árbitros, treinadores, dirigentes)
-│   ├── documents/                 # Upload e download de documentos
-│   ├── administrators/            # Gestão de administradores e permissões
+│   ├── associations/              # Associações distritais
+│   ├── clubs/                     # Clubes (+ associação e equipas)
+│   ├── teams/                     # Equipas + plantel (atletas) + treinadores
+│   ├── competitions/              # Competições + classificações + inscrição de equipas
+│   ├── games/                     # Jogos + resultados + juízes + estatísticas de atletas
+│   ├── members/                   # Pessoas e roles (atletas, juízes, treinadores, dirigentes)
+│   ├── documents/                 # Documentos + categorias (upload/download)
+│   ├── administrators/            # Administradores, permissões e log de auditoria (/logs)
 │   └── search/                    # Pesquisa global
 └── shared/
     ├── utils/
@@ -111,75 +121,22 @@ src/
 
 ## Endpoints
 
-### Auth
-| Método | Rota | Acesso |
-|---|---|---|
-| `POST` | `/api/v1/auth/login` | Público |
-| `POST` | `/api/v1/auth/logout` | Autenticado |
+A documentação completa de todos os endpoints (pedidos, respostas, permissões) está em
+[API_DOCUMENTATION.md](API_DOCUMENTATION.md). Resumo por módulo:
 
-### Clubes
-| Método | Rota | Acesso |
+| Módulo | Base | Operações |
 |---|---|---|
-| `GET` | `/api/v1/clubs` | Público |
-| `GET` | `/api/v1/clubs/:id` | Público |
-| `POST` | `/api/v1/clubs` | Admin (clubs.create) |
-| `PUT` | `/api/v1/clubs/:id` | Admin (clubs.edit) |
-| `DELETE` | `/api/v1/clubs/:id` | Admin (clubs.delete) |
-
-### Membros
-| Método | Rota | Acesso |
-|---|---|---|
-| `GET` | `/api/v1/members` | Público |
-| `GET` | `/api/v1/members/:id` | Público |
-| `POST` | `/api/v1/members` | Admin (members.create) |
-| `PUT` | `/api/v1/members/:id` | Admin (members.edit) |
-| `DELETE` | `/api/v1/members/:id` | Admin (members.delete) |
-
-### Competições
-| Método | Rota | Acesso |
-|---|---|---|
-| `GET` | `/api/v1/competitions` | Público |
-| `GET` | `/api/v1/competitions/:id` | Público |
-| `GET` | `/api/v1/competitions/:id/standings` | Público |
-| `POST` | `/api/v1/competitions` | Admin (competitions.create) |
-| `PUT` | `/api/v1/competitions/:id` | Admin (competitions.edit) |
-| `DELETE` | `/api/v1/competitions/:id` | Admin (competitions.delete) |
-| `POST` | `/api/v1/competitions/:id/teams` | Admin (competitions.edit) |
-| `DELETE` | `/api/v1/competitions/:id/teams/:teamId` | Admin (competitions.delete) |
-
-### Jogos
-| Método | Rota | Acesso |
-|---|---|---|
-| `GET` | `/api/v1/games` | Público |
-| `GET` | `/api/v1/games/:id` | Público |
-| `POST` | `/api/v1/games` | Admin (games.create) |
-| `PUT` | `/api/v1/games/:id` | Admin (games.edit) |
-| `DELETE` | `/api/v1/games/:id` | Admin (games.delete) |
-
-### Documentos
-| Método | Rota | Acesso |
-|---|---|---|
-| `GET` | `/api/v1/documents` | Público |
-| `GET` | `/api/v1/documents/:id/download` | Público |
-| `POST` | `/api/v1/documents` | Admin (documents.create) |
-| `DELETE` | `/api/v1/documents/:id` | Admin (documents.delete) |
-
-### Administradores
-| Método | Rota | Acesso |
-|---|---|---|
-| `GET` | `/api/v1/administrators` | Super-admin |
-| `GET` | `/api/v1/administrators/:id` | Autenticado |
-| `POST` | `/api/v1/administrators` | Super-admin |
-| `PUT` | `/api/v1/administrators/:id` | Super-admin ou próprio |
-| `DELETE` | `/api/v1/administrators/:id` | Super-admin |
-| `PUT` | `/api/v1/administrators/:id/permissions` | Super-admin |
-
-### Pesquisa
-| Método | Rota | Acesso |
-|---|---|---|
-| `GET` | `/api/v1/search?q=...` | Público |
-
-**Query params search:** `q` (obrigatório, mín 2 chars) · `type` (all/clubs/members/competitions/games) · `page` · `limit`
+| Auth | `/api/v1/auth` | login (rate-limited), logout |
+| Associações | `/api/v1/associations` | CRUD + ficha com clubes e seleções |
+| Clubes | `/api/v1/clubs` | CRUD + ficha com associação e equipas |
+| Equipas | `/api/v1/teams` | CRUD + treinadores (`/coaches`) + plantel por época (`/athletes`) |
+| Competições | `/api/v1/competitions` | CRUD + `/standings` + inscrição de equipas (`/teams`) |
+| Jogos | `/api/v1/games` | CRUD + `/result` + juízes (`/referees`) + estatísticas de atletas (`/athletes`) |
+| Membros | `/api/v1/members` | CRUD + roles dedicados (`/roles/:role`) |
+| Documentos | `/api/v1/documents` | CRUD + `/download` + categorias (`/categories`) |
+| Pesquisa | `/api/v1/search` | Pesquisa global por tipo de entidade |
+| Administradores | `/api/v1/administrators` | CRUD (delete = desativação) + permissões |
+| Auditoria | `/api/v1/logs` | Consulta do log de auditoria |
 
 ---
 
@@ -195,13 +152,13 @@ src/
 {
   "success": true,
   "data": [...],
-  "meta": { "total": 100, "page": 1, "limit": 20, "totalPages": 5 }
+  "meta": { "total": 100, "page": 1, "limit": 20, "pages": 5 }
 }
 ```
 
-**Erro:**
+**Erro (envelope uniforme):**
 ```json
-{ "success": false, "error": "Mensagem de erro." }
+{ "error": "Not Found", "message": "Game not found.", "code": 404 }
 ```
 
 ---
@@ -228,10 +185,22 @@ Super-admins (`is_superadmin = 1`) têm acesso total sem verificação de permis
 
 - Helmet (headers HTTP seguros)
 - CORS restrito à origem configurada em `ALLOWED_ORIGIN`
-- Rate limiting no login (configurável via env vars)
-- Passwords com bcrypt (cost 12)
-- Tokens JWT stateless
-- Queries parametrizadas (sem SQL injection)
+- Rate limiting: login (força bruta) + global em toda a API
+- Passwords com bcrypt (cost 12); política de complexidade na criação de admins
+- Tokens JWT stateless; `JWT_SECRET` forte obrigatório (validado no arranque)
+- Queries parametrizadas + whitelists de identificadores (sem SQL injection)
 - Validação de input com express-validator em todos os endpoints
-- Auditoria de todas as acções admin na tabela `AuditLog`
-- MIME type validation nos uploads
+- Auditoria de todas as ações admin na tabela `AuditLog` (consultável em `GET /api/v1/logs`)
+- Uploads: whitelist de MIME type **e** extensão, nomes de ficheiro gerados pelo servidor
+- Download de documentos confinado ao diretório de uploads (anti path-traversal)
+- Anti-escalação de privilégios: só super-admins gerem super-admins; um admin não pode alterar as próprias permissões nem desativar a própria conta
+
+## Produção (HTTPS / reverse proxy)
+
+O TLS não é terminado pela aplicação — em produção a API deve correr atrás de um
+reverse proxy (nginx, Caddy, etc.) que faça HTTPS (RNF06). Nessa configuração:
+
+1. Definir `TRUST_PROXY=1` para que `req.ip` e o rate limiting usem o IP real do cliente.
+2. Restringir `ALLOWED_ORIGIN` ao domínio do frontend.
+3. Alterar a password do super-admin seeded (`admin@fpb.pt`) imediatamente.
+4. Configurar backups regulares do MySQL e do diretório `uploads/` (RNF16).

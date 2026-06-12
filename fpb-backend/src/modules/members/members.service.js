@@ -47,4 +47,34 @@ async function deleteMember(id) {
     await repo.removePerson(id);
 }
 
-module.exports = { getAll, getById, createMember, updateMember, deleteMember };
+// ---------- Roles dedicados (T5: POST/PUT/DELETE /membros/:id/roles/:role) ----------
+
+async function addRole(id, role, data) {
+    await getById(id);
+    if (await repo.hasRole(id, role)) {
+        throw new AppError(`Member already has the role "${role}".`, 409);
+    }
+    await repo.upsertRole(id, role, data);
+    const member = await repo.findById(id);
+    return { person_id: member.id, role, ...member.roles[role] };
+}
+
+async function editRole(id, role, data) {
+    await getById(id);
+    if (!(await repo.hasRole(id, role))) {
+        throw new AppError(`Member does not have the role "${role}".`, 404);
+    }
+    await repo.upsertRole(id, role, data);
+    const member = await repo.findById(id);
+    return { person_id: member.id, role, ...member.roles[role] };
+}
+
+async function removeRoleFromMember(id, role) {
+    await getById(id);
+    if (!(await repo.hasRole(id, role))) {
+        throw new AppError(`Member does not have the role "${role}".`, 404);
+    }
+    await repo.removeRole(id, role);
+}
+
+module.exports = { getAll, getById, createMember, updateMember, deleteMember, addRole, editRole, removeRoleFromMember };

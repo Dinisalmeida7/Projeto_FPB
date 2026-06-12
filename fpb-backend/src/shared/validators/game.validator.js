@@ -37,4 +37,25 @@ const resultRules = [
     body('score_away').isInt({ min: 0 }).withMessage('score_away must be a non-negative integer.'),
 ];
 
-module.exports = { createRules, updateRules, listRules, resultRules };
+// Nomeação de juízes (T5: POST /jogos/:id/juizes — CU19)
+const refereeRules = [
+    body('referee_id').isInt({ min: 1 }).withMessage('referee_id must be a positive integer.'),
+    body('role').optional().isIn(['main', 'assistant', 'table']).withMessage('role must be one of: main, assistant, table.'),
+];
+
+// Participação/estatísticas de atletas (T5: POST/PUT /jogos/:id/atletas — T4: AtletaJogo)
+const STAT_FIELDS = [
+    body('points').optional().isInt({ min: 0, max: 65535 }).withMessage('points must be a non-negative integer.'),
+    body('rebounds').optional().isInt({ min: 0, max: 65535 }).withMessage('rebounds must be a non-negative integer.'),
+    body('assists').optional().isInt({ min: 0, max: 65535 }).withMessage('assists must be a non-negative integer.'),
+    body('minutes_played').optional().isInt({ min: 0, max: 255 }).withMessage('minutes_played must be between 0 and 255.'),
+];
+
+const athleteCreateRules = [
+    body('athlete_id').isInt({ min: 1 }).withMessage('athlete_id must be a positive integer.'),
+    ...STAT_FIELDS,
+];
+
+const athleteUpdateRules = [...STAT_FIELDS];
+
+module.exports = { createRules, updateRules, listRules, resultRules, refereeRules, athleteCreateRules, athleteUpdateRules };

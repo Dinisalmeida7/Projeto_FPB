@@ -38,4 +38,46 @@ const remove = asyncHandler(async (req, res) => {
     return res.status(204).end();
 });
 
-module.exports = { getAll, getById, create, update, registerResult, remove };
+// ---------- Juízes ----------
+
+const addReferee = asyncHandler(async (req, res) => {
+    const nomination = await svc.addReferee(req.params.id, req.body.referee_id, req.body.role);
+    await logAction(req.admin.id, req.admin.email, 'CREATE', 'GameReferee', parseInt(req.params.id),
+        { referee_id: req.body.referee_id, role: req.body.role || 'main' }, req.ip);
+    return success(res, nomination, 201);
+});
+
+const removeReferee = asyncHandler(async (req, res) => {
+    await svc.removeReferee(req.params.id, req.params.refereeId);
+    await logAction(req.admin.id, req.admin.email, 'DELETE', 'GameReferee', parseInt(req.params.id),
+        { referee_id: parseInt(req.params.refereeId) }, req.ip);
+    return res.status(204).end();
+});
+
+// ---------- Atletas ----------
+
+const addAthlete = asyncHandler(async (req, res) => {
+    const participation = await svc.addAthlete(req.params.id, req.body);
+    await logAction(req.admin.id, req.admin.email, 'CREATE', 'GameAthlete', parseInt(req.params.id),
+        { athlete_id: req.body.athlete_id }, req.ip);
+    return success(res, participation, 201);
+});
+
+const updateAthlete = asyncHandler(async (req, res) => {
+    const participation = await svc.updateAthleteStats(req.params.id, req.params.athleteId, req.body);
+    await logAction(req.admin.id, req.admin.email, 'UPDATE', 'GameAthlete', parseInt(req.params.id),
+        { athlete_id: parseInt(req.params.athleteId), ...req.body }, req.ip);
+    return success(res, participation);
+});
+
+const removeAthlete = asyncHandler(async (req, res) => {
+    await svc.removeAthlete(req.params.id, req.params.athleteId);
+    await logAction(req.admin.id, req.admin.email, 'DELETE', 'GameAthlete', parseInt(req.params.id),
+        { athlete_id: parseInt(req.params.athleteId) }, req.ip);
+    return res.status(204).end();
+});
+
+module.exports = {
+    getAll, getById, create, update, registerResult, remove,
+    addReferee, removeReferee, addAthlete, updateAthlete, removeAthlete,
+};
